@@ -1,38 +1,73 @@
-#include <sys/types.h>
+#include <netdb.h> 
+#include <stdio.h> 
+#include <stdlib.h> 
+#include <string.h> 
+#include <sys/socket.h> 
 #include <unistd.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <stdio.h>
-#include<string.h>
- 
+ #include <arpa/inet.h>
+#define MAX 80 
+#define PORT 8080 
+#define SA struct sockaddr 
 
-int main(int argc,char **argv)
-{
-    int sockfd,n;
-    char sendline[100];
-    char recvline[100]; 
-    struct sockaddr_in servaddr;
- 
-    sockfd=socket(AF_INET,SOCK_STREAM,0);
-    bzero(&servaddr,sizeof servaddr);
- 
-    servaddr.sin_family=AF_INET;
-    servaddr.sin_port=htons(22000);
- 
-    inet_pton(AF_INET,"127.0.0.1",&(servaddr.sin_addr));
- 
-    connect(sockfd,(struct sockaddr *)&servaddr,sizeof(servaddr));
- 
-    while(1)
-    {
-        bzero( sendline, 100);
-        bzero( recvline, 100);
-        fgets(sendline,100,stdin); /*stdin = 0 , for standard input */
- 
-        write(sockfd,sendline,strlen(sendline)+1);
-        read(sockfd,recvline,100);
-        printf("%s",recvline);
-    }
- 
-}
+// fonction pour la conversation entre le serveur et le client
+void func(int sockfd) 
+{ 
+	char buff[MAX]; 
+	int n; 
+	// création de la boucle pour le chat 
+	for (;;) { 
+		bzero(buff, sizeof(buff)); 
+		printf("Veuillez svp écrire votre message : "); 
+		n = 0;  
+		while ((buff[n++] = getchar()) != '\n') 
+			; 
+		  
+		write(sockfd, buff, sizeof(buff)); 
+		bzero(buff, sizeof(buff)); 
+
+		// lecture du message du serveur et le copier dans le buffer
+		read(sockfd, buff, sizeof(buff)); 
+		printf("Du Serveur : %s", buff); 
+		if ((strncmp(buff, "sortir", 4)) == 0) { 
+			printf("Conversation terminée...\n");
+			break; 
+		} 
+	} 
+} 
+
+//fonction principale
+int main() 
+{ 
+	int sockfd, connfd; 
+	struct sockaddr_in servaddr, cli; 
+
+	//creation du socket et varification 
+	sockfd = socket(AF_INET, SOCK_STREAM, 0); 
+	if (sockfd == -1) { 
+		printf("erreur de la création du socket...\n"); 
+		exit(0); 
+	} 
+	else
+		printf("Socket crée avec succès..\n"); 
+	bzero(&servaddr, sizeof(servaddr)); 
+
+	// attribution des IP, PORT 
+	servaddr.sin_family = AF_INET; 
+	servaddr.sin_addr.s_addr = inet_addr("127.0.0.1"); 
+	servaddr.sin_port = htons(PORT); 
+
+	// connection du socket du client au socket du serveur 
+	if (connect(sockfd, (SA*)&servaddr, sizeof(servaddr)) != 0) { 
+		printf("erreur de connexion avec le serveur...\n"); 
+		exit(0); 
+	} 
+	else
+		printf("connection au socket..\n"); 
+
+	// fonction pour le chat 
+	func(sockfd); 
+
+	// Fermeture du socket 
+	close(sockfd); 
+} 
+
